@@ -83,7 +83,9 @@ const uploadFile = async () => {
   loading.value = true
   try {
     const { data } = await axios.post('/api/imports/upload', formData)
-    message.value = `上传成功，批次 #${data.id}，已自动解析`
+    message.value = data.parse_status === 'failed'
+      ? `上传完成但解析失败（批次 #${data.id}）：${data.parse_error || '未知原因'}`
+      : `上传成功，批次 #${data.id}，已自动解析`
     previewBatchId.value = String(data.id)
     await Promise.all([loadBatches(), loadPreview()])
   } catch (error) {
@@ -280,10 +282,10 @@ onMounted(loadAll)
       <h2>文件与已解析条目管理</h2>
       <h3>全部文件批次</h3>
       <table>
-        <thead><tr><th>批次ID</th><th>来源</th><th>文件</th><th>上传时间</th><th>解析状态</th><th>操作</th></tr></thead>
+        <thead><tr><th>批次ID</th><th>来源</th><th>文件</th><th>上传时间</th><th>解析状态</th><th>失败原因</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="b in batches" :key="b.id">
-            <td>#{{ b.id }}</td><td>{{ b.source_type }}</td><td>{{ b.file_name }}</td><td>{{ b.uploaded_at }}</td><td>{{ b.parse_status }}</td>
+            <td>#{{ b.id }}</td><td>{{ b.source_type }}</td><td>{{ b.file_name }}</td><td>{{ b.uploaded_at }}</td><td>{{ b.parse_status }}</td><td>{{ b.parse_error || "-" }}</td>
             <td><button class="danger-btn" @click="deleteBatch(b.id)">删除批次</button></td>
           </tr>
         </tbody>

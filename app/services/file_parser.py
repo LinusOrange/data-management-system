@@ -78,19 +78,15 @@ def _parse_xlsx(file_path: Path, source_type: SourceType) -> list[ParsedPreviewR
 
 
 def _parse_inbound_xlsx_fixed_header(sheet) -> list[ParsedPreviewRow]:
-    """Inbound template is fixed: row 17 is header, values are read from fixed columns."""
-    # A=1, E=5, H=8, M=13, P=16, W=23
+    """Inbound template is fixed: row 17 is header and E/H/M/P/W are used for values."""
+    # 1-based excel column indexes
     col_idx = {
-        "name": 4,      # E 列: 商品名称 -> 名称
-        "item_code": 7,  # H 列: 型号 -> 货号
-        "qty": 12,      # M 列: 数量
-        "amount": 15,   # P 列: 金额
-        "order_no": 22,  # W 列: 摘要 -> 订单号
+        "name": 5,       # E 列: 商品名称 -> 名称
+        "item_code": 8,  # H 列: 型号 -> 货号
+        "qty": 13,       # M 列: 数量
+        "amount": 16,    # P 列: 金额
+        "order_no": 23,  # W 列: 摘要 -> 订单号
     }
-
-    header_row = next(sheet.iter_rows(min_row=17, max_row=17, values_only=True), None)
-    if not header_row:
-        raise ValueError("inbound header row(17) not found")
 
     expected_headers = {
         "name": "商品名称",
@@ -99,24 +95,29 @@ def _parse_inbound_xlsx_fixed_header(sheet) -> list[ParsedPreviewRow]:
         "amount": "金额",
         "order_no": "摘要",
     }
-    for field, idx in col_idx.items():
-        raw_header = header_row[idx] if idx < len(header_row) else None
+
+    header_errors: list[str] = []
+    for field, column in col_idx.items():
+        raw_header = sheet.cell(row=17, column=column).value
         normalized = _normalize_header(raw_header)
         expected = expected_headers[field]
         if expected not in normalized:
-            raise ValueError(f"inbound header invalid at column index {idx + 1}: expected contains '{expected}'")
+            column_label = chr(ord("A") + column - 1)
+            header_errors.append(
+                f"{column_label}17 expected contains '{expected}', actual='{normalized or 'EMPTY'}'"
+            )
+
+    if header_errors:
+        raise ValueError("inbound header validation failed: " + "; ".join(header_errors))
 
     data_rows: list[ParsedPreviewRow] = []
-    for excel_row_no, row in enumerate(sheet.iter_rows(min_row=18, values_only=True), start=18):
-        if not any(v not in (None, "") for v in row):
-            continue
-
+    for excel_row_no in range(18, sheet.max_row + 1):
         row_dict = {
-            "name": row[col_idx["name"]] if col_idx["name"] < len(row) else None,
-            "item_code": row[col_idx["item_code"]] if col_idx["item_code"] < len(row) else None,
-            "qty": row[col_idx["qty"]] if col_idx["qty"] < len(row) else None,
-            "amount": row[col_idx["amount"]] if col_idx["amount"] < len(row) else None,
-            "order_no": row[col_idx["order_no"]] if col_idx["order_no"] < len(row) else None,
+            "name": sheet.cell(row=excel_row_no, column=col_idx["name"]).value,
+            "item_code": sheet.cell(row=excel_row_no, column=col_idx["item_code"]).value,
+            "qty": sheet.cell(row=excel_row_no, column=col_idx["qty"]).value,
+            "amount": sheet.cell(row=excel_row_no, column=col_idx["amount"]).value,
+            "order_no": sheet.cell(row=excel_row_no, column=col_idx["order_no"]).value,
             "raw_excel_row": excel_row_no,
         }
         preview = _build_preview_row_fixed(excel_row_no, row_dict)

@@ -18,6 +18,7 @@ class ImportBatchOut(BaseModel):
     file_name: str
     uploaded_by: str | None
     parse_status: str
+    parse_error: str | None = None
     uploaded_at: datetime
 
     class Config:
