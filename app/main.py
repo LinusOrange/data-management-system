@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import Base, engine
+from app.core.database import Base, engine, run_startup_migrations
 from app.routers.dashboard import router as dashboard_router
 from app.routers.imports import router as imports_router
 from app.routers.purchases import router as purchases_router
@@ -25,6 +25,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    run_startup_migrations()
 
 
 @app.get("/health")
