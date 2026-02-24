@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reconciliation-backend
+    environment:
+      - DATABASE_URL=sqlite:///./data/reconciliation.db
+      - CORS_ORIGINS=http://localhost:5173
+    volumes:
+      - backend_data:/app/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: reconciliation-frontend
+    environment:
+      - VITE_API_BASE=http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  backend_data:
