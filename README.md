@@ -13,6 +13,10 @@
 - 上传解析时，系统会按 `订单号 + 货号`（标准化后）进行去重。
 - 若数据库中已存在相同 `订单号 + 货号` 的条目，则该行会被跳过，不再入库。
 
+## 上传文件命名规则
+
+- 上传后的文件会被重命名为 `YYYYMMDD-自增编号`（例如 `20260224-0001.xls`）。
+
 
 ### 入库单（inbound）
 
@@ -46,12 +50,13 @@ docker compose up --build
 
 ## 关键接口
 
-- `POST /api/imports/upload`：上传并自动解析（支持 xls/xlsx/csv）
+- `POST /api/imports/upload`：上传并自动解析（支持 xls/xlsx/csv，文件自动重命名为日期+自增编号）
 - `GET /api/imports`：导入批次列表（含 `parse_error` 失败原因）
 - `GET /api/imports/{batch_id}/preview`：按统一列预览数据
 - `GET /api/imports/manage/overview`：查看所有文件和已解析条目（分入库单/对账单）
 - `DELETE /api/imports/{batch_id}`：删除文件批次及其已解析条目
 - `POST /api/reconciliation/run?statement_batch_id=1&inbound_batch_id=2`：运行对账
+- `GET /api/reconciliation/results`：按“货号+订单号”查看对账成功/失败结果
 - `GET /api/purchases`：采购数据
 - `PATCH /api/purchases/{id}/invoice-status`
 - `PATCH /api/purchases/{id}/reconciliation-status`
@@ -61,5 +66,6 @@ docker compose up --build
 
 - **系统看板**：KPI 概览。
 - **上传文件对账**：上传、自动解析、批次预览（名称/货号/数量/金额/订单号）、触发对账。
+- **对账页面**：查看对账成功和失败条目（失败包含池内未匹配与数量金额不一致）。
 - **数据库管理**：统一列展示采购数据，维护对账状态/开票状态/删除。
 - **文件与条目管理**：管理全部导入文件，并分别查看入库单与对账单的已解析条目。

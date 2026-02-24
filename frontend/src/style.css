@@ -21,15 +21,15 @@ body { margin: 0; }
   flex-wrap: wrap;
 }
 
-.nav { display: flex; gap: 8px; }
-.nav button {
+.nav { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav a {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background: white;
   padding: 8px 12px;
   cursor: pointer;
 }
-.nav button.active {
+.nav a.active {
   background: #2563eb;
   color: white;
   border-color: #2563eb;

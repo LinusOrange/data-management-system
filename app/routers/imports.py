@@ -1,5 +1,6 @@
+import re
+from datetime import datetime
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -37,7 +38,23 @@ async def upload_import_file(
     db: Session = Depends(get_db),
 ):
     suffix = Path(file.filename or "").suffix
-    safe_name = f"{uuid4().hex}{suffix}"
+    if not suffix:
+        suffix = ".bin"
+
+    date_str = datetime.utcnow().strftime("%Y%m%d")
+    prefix = f"{date_str}-"
+    existing_names = [
+        Path(name).name
+        for (name,) in db.query(ImportBatch.file_name).filter(ImportBatch.file_name.like(f"%/{prefix}%")).all()
+    ]
+
+    max_seq = 0
+    for name in existing_names:
+        match = re.match(rf"^{prefix}(\d{{4}})", name)
+        if match:
+            max_seq = max(max_seq, int(match.group(1)))
+
+    safe_name = f"{prefix}{max_seq + 1:04d}{suffix.lower()}"
     save_path = UPLOAD_DIR / safe_name
 
     content = await file.read()

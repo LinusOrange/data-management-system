@@ -96,3 +96,22 @@ class ImportManagementOut(BaseModel):
     batches: list[ImportBatchOut]
     inbound_rows: list[ManagedParsedRowOut]
     statement_rows: list[ManagedParsedRowOut]
+
+
+class ReconciliationResultOut(BaseModel):
+    match_key: str
+    order_no: str | None
+    item_code: str | None
+    statement_qty_sum: Decimal | None
+    inbound_qty_sum: Decimal | None
+    statement_amt_sum: Decimal | None
+    inbound_amt_sum: Decimal | None
+    qty_diff: Decimal | None
+    amt_diff: Decimal | None
+    match_status: str
+    reconciliation_result: str
+
+
+class ReconciliationResultSummaryOut(BaseModel):
+    success: list[ReconciliationResultOut]
+    failed: list[ReconciliationResultOut]
