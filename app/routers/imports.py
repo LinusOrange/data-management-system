@@ -1,12 +1,14 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import ImportBatch, SourceType
-from app.schemas import ImportBatchCreate, ImportBatchOut
+from app.models import ImportBatch, NormalizedRow, ParseStatus, RawRow, SourceType
+from app.schemas import ImportBatchCreate, ImportBatchOut, PreviewRowOut
+from app.services.file_parser import parse_file_to_preview_rows
+from app.services.reconciliation import build_match_key, normalize_text
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
@@ -45,8 +47,44 @@ async def upload_import_file(
         source_type=source_type,
         file_name=str(save_path),
         uploaded_by=uploaded_by,
+        parse_status=ParseStatus.pending,
     )
     db.add(record)
+    db.flush()
+
+    try:
+        parsed_rows = parse_file_to_preview_rows(save_path, source_type)
+        for parsed in parsed_rows:
+            raw_row = RawRow(
+                batch_id=record.id,
+                source_type=source_type,
+                row_no=parsed.row_no,
+                raw_json=parsed.raw,
+            )
+            db.add(raw_row)
+            db.flush()
+
+            norm_row = NormalizedRow(
+                batch_id=record.id,
+                raw_row_id=raw_row.id,
+                source_type=source_type,
+                order_ref=parsed.order_no,
+                item_model=parsed.item_code,
+                item_name=parsed.name,
+                qty=parsed.qty,
+                amount_tax_incl=parsed.amount,
+                normalized_order_ref=normalize_text(parsed.order_no),
+                normalized_item_model=normalize_text(parsed.item_code),
+                match_key=build_match_key(parsed.order_no, parsed.item_code),
+            )
+            db.add(norm_row)
+
+        record.parse_status = ParseStatus.success
+        record.parse_error = None
+    except Exception as exc:  # noqa: BLE001
+        record.parse_status = ParseStatus.failed
+        record.parse_error = str(exc)
+
     db.commit()
     db.refresh(record)
     return record
@@ -60,3 +98,32 @@ def list_import_batches(db: Session = Depends(get_db)):
 @router.get("/{batch_id}", response_model=ImportBatchOut)
 def get_import_batch(batch_id: int, db: Session = Depends(get_db)):
     return db.get(ImportBatch, batch_id)
+
+
+@router.get("/{batch_id}/preview", response_model=list[PreviewRowOut])
+def preview_import_rows(batch_id: int, db: Session = Depends(get_db)):
+    batch = db.get(ImportBatch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="batch not found")
+
+    rows = (
+        db.query(NormalizedRow)
+        .filter(NormalizedRow.batch_id == batch_id)
+        .order_by(NormalizedRow.id.asc())
+        .all()
+    )
+
+    raw_rows = db.query(RawRow).filter(RawRow.batch_id == batch_id).all()
+    row_no_map = {raw.id: raw.row_no for raw in raw_rows}
+
+    return [
+        {
+            "row_no": row_no_map.get(row.raw_row_id, row.raw_row_id),
+            "name": row.item_name,
+            "item_code": row.item_model,
+            "qty": row.qty,
+            "amount": row.amount_tax_incl,
+            "order_no": row.order_ref,
+        }
+        for row in rows
+    ]

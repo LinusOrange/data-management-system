@@ -18,6 +18,7 @@ def create_normalized_row(payload: NormalizedRowCreate, db: Session = Depends(ge
         biz_date=payload.biz_date,
         order_ref=payload.order_ref,
         item_model=payload.item_model,
+        item_name=payload.item_name,
         qty=payload.qty,
         amount_tax_incl=payload.amount_tax_incl,
         counterparty_name=payload.counterparty_name,

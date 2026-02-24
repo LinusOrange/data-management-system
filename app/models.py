@@ -73,6 +73,7 @@ class NormalizedRow(Base):
     biz_date: Mapped[date | None] = mapped_column(Date)
     order_ref: Mapped[str | None] = mapped_column(String(100))
     item_model: Mapped[str | None] = mapped_column(String(100))
+    item_name: Mapped[str | None] = mapped_column(String(255))
 
     qty: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     amount_tax_incl: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
@@ -127,6 +128,7 @@ class PurchaseItem(Base):
 
     order_ref: Mapped[str | None] = mapped_column(String(100))
     item_model: Mapped[str | None] = mapped_column(String(100))
+    item_name: Mapped[str | None] = mapped_column(String(255))
     qty: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     amount_tax_incl: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
 

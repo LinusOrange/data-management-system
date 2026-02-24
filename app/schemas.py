@@ -24,10 +24,20 @@ class ImportBatchOut(BaseModel):
         from_attributes = True
 
 
+class PreviewRowOut(BaseModel):
+    row_no: int
+    name: str | None
+    item_code: str | None
+    qty: Decimal | None
+    amount: Decimal | None
+    order_no: str | None
+
+
 class PurchaseItemOut(BaseModel):
     id: int
     order_ref: str | None
     item_model: str | None
+    item_name: str | None
     qty: Decimal | None
     amount_tax_incl: Decimal | None
     reconciliation_status: ReconciliationStatus
@@ -63,6 +73,7 @@ class NormalizedRowCreate(BaseModel):
     biz_date: date | None = None
     order_ref: str | None = None
     item_model: str | None = None
+    item_name: str | None = None
     qty: Decimal | None = None
     amount_tax_incl: Decimal | None = None
     counterparty_name: str | None = None
