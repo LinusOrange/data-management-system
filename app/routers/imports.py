@@ -54,7 +54,27 @@ async def upload_import_file(
 
     try:
         parsed_rows = parse_file_to_preview_rows(save_path, source_type)
+        existing_keys = {
+            (order_ref, item_model)
+            for order_ref, item_model in (
+                db.query(NormalizedRow.normalized_order_ref, NormalizedRow.normalized_item_model)
+                .filter(
+                    NormalizedRow.source_type == source_type,
+                    NormalizedRow.normalized_order_ref.is_not(None),
+                    NormalizedRow.normalized_item_model.is_not(None),
+                )
+                .all()
+            )
+        }
+
         for parsed in parsed_rows:
+            normalized_order_ref = normalize_text(parsed.order_no)
+            normalized_item_model = normalize_text(parsed.item_code)
+            dedup_key = (normalized_order_ref, normalized_item_model)
+
+            if normalized_order_ref and normalized_item_model and dedup_key in existing_keys:
+                continue
+
             raw_row = RawRow(
                 batch_id=record.id,
                 source_type=source_type,
@@ -73,11 +93,14 @@ async def upload_import_file(
                 item_name=parsed.name,
                 qty=parsed.qty,
                 amount_tax_incl=parsed.amount,
-                normalized_order_ref=normalize_text(parsed.order_no),
-                normalized_item_model=normalize_text(parsed.item_code),
+                normalized_order_ref=normalized_order_ref,
+                normalized_item_model=normalized_item_model,
                 match_key=build_match_key(parsed.order_no, parsed.item_code),
             )
             db.add(norm_row)
+
+            if normalized_order_ref and normalized_item_model:
+                existing_keys.add(dedup_key)
 
         record.parse_status = ParseStatus.success
         record.parse_error = None
