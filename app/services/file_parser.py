@@ -67,6 +67,43 @@ def _parse_xlsx(file_path: Path, source_type: SourceType) -> list[ParsedPreviewR
     workbook = load_workbook(filename=file_path, read_only=True, data_only=True)
     sheet = workbook.active
 
+    if source_type == SourceType.inbound:
+        rows = _parse_inbound_xlsx_fixed_header(sheet)
+        workbook.close()
+        return rows
+
+    rows = _parse_xlsx_by_header_scan(sheet, source_type)
+    workbook.close()
+    return rows
+
+
+def _parse_inbound_xlsx_fixed_header(sheet) -> list[ParsedPreviewRow]:
+    """Inbound template is fixed: header starts from row 17 (A17)."""
+    mapping = _mapping_for_source(SourceType.inbound)
+
+    header_row = next(sheet.iter_rows(min_row=17, max_row=17, values_only=True), None)
+    if not header_row:
+        raise ValueError("inbound header row(17) not found")
+
+    headers = [_normalize_header(v) for v in header_row]
+    missing = [col for col in mapping.keys() if col not in headers]
+    if missing:
+        raise ValueError(f"inbound header row(17) missing required columns: {missing}")
+
+    data_rows: list[ParsedPreviewRow] = []
+    for excel_row_no, row in enumerate(sheet.iter_rows(min_row=18, values_only=True), start=18):
+        if not any(v not in (None, "") for v in row):
+            continue
+
+        row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
+        preview = _build_preview_row(excel_row_no, row_dict, mapping)
+        if preview:
+            data_rows.append(preview)
+
+    return data_rows
+
+
+def _parse_xlsx_by_header_scan(sheet, source_type: SourceType) -> list[ParsedPreviewRow]:
     mapping = _mapping_for_source(source_type)
     headers: list[str] = []
     header_found = False
@@ -90,7 +127,6 @@ def _parse_xlsx(file_path: Path, source_type: SourceType) -> list[ParsedPreviewR
         if preview:
             data_rows.append(preview)
 
-    workbook.close()
     return data_rows
 
 
