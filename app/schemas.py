@@ -77,3 +77,21 @@ class NormalizedRowCreate(BaseModel):
     qty: Decimal | None = None
     amount_tax_incl: Decimal | None = None
     counterparty_name: str | None = None
+
+
+class ManagedParsedRowOut(BaseModel):
+    id: int
+    batch_id: int
+    source_type: SourceType
+    row_no: int
+    name: str | None
+    item_code: str | None
+    qty: Decimal | None
+    amount: Decimal | None
+    order_no: str | None
+
+
+class ImportManagementOut(BaseModel):
+    batches: list[ImportBatchOut]
+    inbound_rows: list[ManagedParsedRowOut]
+    statement_rows: list[ManagedParsedRowOut]

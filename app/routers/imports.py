@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models import ImportBatch, NormalizedRow, ParseStatus, RawRow, SourceType
-from app.schemas import ImportBatchCreate, ImportBatchOut, PreviewRowOut
+from app.schemas import ImportBatchCreate, ImportBatchOut, ImportManagementOut, ManagedParsedRowOut, PreviewRowOut
 from app.services.file_parser import parse_file_to_preview_rows
 from app.services.reconciliation import build_match_key, normalize_text
 
@@ -127,3 +127,54 @@ def preview_import_rows(batch_id: int, db: Session = Depends(get_db)):
         }
         for row in rows
     ]
+
+
+@router.get("/manage/overview", response_model=ImportManagementOut)
+def get_import_management_data(db: Session = Depends(get_db)):
+    batches = db.query(ImportBatch).order_by(ImportBatch.id.desc()).all()
+
+    normalized_rows = (
+        db.query(NormalizedRow, RawRow.row_no)
+        .join(RawRow, RawRow.id == NormalizedRow.raw_row_id)
+        .order_by(NormalizedRow.id.desc())
+        .all()
+    )
+
+    inbound_rows: list[ManagedParsedRowOut] = []
+    statement_rows: list[ManagedParsedRowOut] = []
+
+    for norm, row_no in normalized_rows:
+        item = ManagedParsedRowOut(
+            id=norm.id,
+            batch_id=norm.batch_id,
+            source_type=norm.source_type,
+            row_no=row_no,
+            name=norm.item_name,
+            item_code=norm.item_model,
+            qty=norm.qty,
+            amount=norm.amount_tax_incl,
+            order_no=norm.order_ref,
+        )
+        if norm.source_type == SourceType.inbound:
+            inbound_rows.append(item)
+        else:
+            statement_rows.append(item)
+
+    return ImportManagementOut(
+        batches=batches,
+        inbound_rows=inbound_rows,
+        statement_rows=statement_rows,
+    )
+
+
+@router.delete("/{batch_id}")
+def delete_import_batch(batch_id: int, db: Session = Depends(get_db)):
+    batch = db.get(ImportBatch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="batch not found")
+
+    db.query(NormalizedRow).filter(NormalizedRow.batch_id == batch_id).delete(synchronize_session=False)
+    db.query(RawRow).filter(RawRow.batch_id == batch_id).delete(synchronize_session=False)
+    db.delete(batch)
+    db.commit()
+    return {"ok": True}

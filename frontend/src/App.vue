@@ -17,6 +17,8 @@ const purchases = ref([])
 const batches = ref([])
 const previewRows = ref([])
 const previewBatchId = ref('')
+const managedInboundRows = ref([])
+const managedStatementRows = ref([])
 
 const uploadForm = ref({ source_type: 'statement', uploaded_by: '', file: null })
 const reconciliationForm = ref({ statement_batch_id: '', inbound_batch_id: '' })
@@ -51,12 +53,17 @@ const displayRows = computed(() => filteredPurchases.value.map((item) => ({
 const loadSummary = async () => { summary.value = (await axios.get('/api/dashboard/summary')).data }
 const loadPurchases = async () => { purchases.value = (await axios.get('/api/purchases')).data }
 const loadBatches = async () => { batches.value = (await axios.get('/api/imports')).data }
+const loadManagement = async () => {
+  const { data } = await axios.get('/api/imports/manage/overview')
+  managedInboundRows.value = data.inbound_rows
+  managedStatementRows.value = data.statement_rows
+}
 
 const loadAll = async () => {
   loading.value = true
   message.value = ''
   try {
-    await Promise.all([loadSummary(), loadPurchases(), loadBatches()])
+    await Promise.all([loadSummary(), loadPurchases(), loadBatches(), loadManagement()])
   } catch (error) {
     message.value = `加载失败：${error?.message || '未知错误'}`
   } finally {
@@ -132,6 +139,20 @@ const removePurchase = async (itemId) => {
   await loadAll()
 }
 
+const deleteBatch = async (batchId) => {
+  loading.value = true
+  try {
+    await axios.delete(`/api/imports/${batchId}`)
+    message.value = `已删除批次 #${batchId}`
+    await loadAll()
+    if (String(batchId) === previewBatchId.value) previewRows.value = []
+  } catch (error) {
+    message.value = `删除批次失败：${error?.response?.data?.detail || error.message}`
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(loadAll)
 </script>
 
@@ -143,6 +164,7 @@ onMounted(loadAll)
         <button :class="{ active: activeTab === 'dashboard' }" @click="activeTab = 'dashboard'">系统看板</button>
         <button :class="{ active: activeTab === 'upload' }" @click="activeTab = 'upload'">上传文件对账</button>
         <button :class="{ active: activeTab === 'db' }" @click="activeTab = 'db'">数据库管理</button>
+        <button :class="{ active: activeTab === 'files' }" @click="activeTab = 'files'">文件与条目管理</button>
       </nav>
     </header>
 
@@ -216,7 +238,7 @@ onMounted(loadAll)
       <button class="primary" :disabled="loading" @click="runReconciliation">运行对账</button>
     </section>
 
-    <section v-else class="panel">
+    <section v-else-if="activeTab === 'db'" class="panel">
       <div class="panel-head">
         <h2>数据库管理（purchase_item）</h2>
         <select v-model="purchaseFilter">
@@ -252,5 +274,41 @@ onMounted(loadAll)
         </tbody>
       </table>
     </section>
+
+
+    <section v-else-if="activeTab === 'files'" class="panel">
+      <h2>文件与已解析条目管理</h2>
+      <h3>全部文件批次</h3>
+      <table>
+        <thead><tr><th>批次ID</th><th>来源</th><th>文件</th><th>上传时间</th><th>解析状态</th><th>操作</th></tr></thead>
+        <tbody>
+          <tr v-for="b in batches" :key="b.id">
+            <td>#{{ b.id }}</td><td>{{ b.source_type }}</td><td>{{ b.file_name }}</td><td>{{ b.uploaded_at }}</td><td>{{ b.parse_status }}</td>
+            <td><button class="danger-btn" @click="deleteBatch(b.id)">删除批次</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>入库单已解析条目</h3>
+      <table>
+        <thead><tr><th>批次</th><th>行号</th><th>名称</th><th>货号</th><th>数量</th><th>金额</th><th>订单号</th></tr></thead>
+        <tbody>
+          <tr v-for="row in managedInboundRows" :key="`in-${row.id}`">
+            <td>#{{ row.batch_id }}</td><td>{{ row.row_no }}</td><td>{{ row.name || '-' }}</td><td>{{ row.item_code || '-' }}</td><td>{{ row.qty || '-' }}</td><td>{{ row.amount || '-' }}</td><td>{{ row.order_no || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>对账单已解析条目</h3>
+      <table>
+        <thead><tr><th>批次</th><th>行号</th><th>名称</th><th>货号</th><th>数量</th><th>金额</th><th>订单号</th></tr></thead>
+        <tbody>
+          <tr v-for="row in managedStatementRows" :key="`st-${row.id}`">
+            <td>#{{ row.batch_id }}</td><td>{{ row.row_no }}</td><td>{{ row.name || '-' }}</td><td>{{ row.item_code || '-' }}</td><td>{{ row.qty || '-' }}</td><td>{{ row.amount || '-' }}</td><td>{{ row.order_no || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
   </main>
 </template>
