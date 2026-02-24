@@ -1,0 +1,68 @@
+from datetime import date, datetime
+from decimal import Decimal
+
+from pydantic import BaseModel
+
+from app.models import InvoiceStatus, ReconciliationStatus, SourceType
+
+
+class ImportBatchCreate(BaseModel):
+    source_type: SourceType
+    file_name: str
+    uploaded_by: str | None = None
+
+
+class ImportBatchOut(BaseModel):
+    id: int
+    source_type: SourceType
+    file_name: str
+    uploaded_by: str | None
+    parse_status: str
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseItemOut(BaseModel):
+    id: int
+    order_ref: str | None
+    item_model: str | None
+    qty: Decimal | None
+    amount_tax_incl: Decimal | None
+    reconciliation_status: ReconciliationStatus
+    invoice_status: InvoiceStatus
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseItemInvoiceUpdate(BaseModel):
+    invoice_status: InvoiceStatus
+    operator: str | None = None
+    note: str | None = None
+
+
+class PurchaseItemReconciliationUpdate(BaseModel):
+    reconciliation_status: ReconciliationStatus
+    operator: str | None = None
+    note: str | None = None
+
+
+class DashboardSummary(BaseModel):
+    pending_reconciliation_count: int
+    pending_invoice_count: int
+    reconciliation_exception_count: int
+    closed_loop_count: int
+
+
+class NormalizedRowCreate(BaseModel):
+    batch_id: int
+    raw_row_id: int
+    source_type: SourceType
+    biz_date: date | None = None
+    order_ref: str | None = None
+    item_model: str | None = None
+    qty: Decimal | None = None
+    amount_tax_incl: Decimal | None = None
+    counterparty_name: str | None = None
