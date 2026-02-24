@@ -1,4 +1,7 @@
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
 from app.routers.dashboard import router as dashboard_router
@@ -7,6 +10,16 @@ from app.routers.purchases import router as purchases_router
 from app.routers.reconciliation import router as reconciliation_router
 
 app = FastAPI(title="Data Reconciliation System")
+
+cors_origins = os.getenv("CORS_ORIGINS", "*")
+origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins or ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
