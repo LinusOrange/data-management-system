@@ -114,4 +114,6 @@ class ReconciliationResultOut(BaseModel):
 
 class ReconciliationResultSummaryOut(BaseModel):
     success: list[ReconciliationResultOut]
-    failed: list[ReconciliationResultOut]
+    failed_diff: list[ReconciliationResultOut]
+    failed_statement_only: list[ReconciliationResultOut]
+    failed_inbound_only: list[ReconciliationResultOut]

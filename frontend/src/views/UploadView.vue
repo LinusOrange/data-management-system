@@ -35,27 +35,10 @@
       </tbody>
     </table>
 
-    <hr />
-    <h3>执行对账任务</h3>
-    <div class="form-grid">
-      <label>对账单批次
-        <select v-model="state.reconciliationForm.statement_batch_id">
-          <option value="">请选择</option>
-          <option v-for="b in state.batches.filter(x => x.source_type === 'statement')" :key="b.id" :value="b.id">#{{ b.id }}</option>
-        </select>
-      </label>
-      <label>入库单批次
-        <select v-model="state.reconciliationForm.inbound_batch_id">
-          <option value="">请选择</option>
-          <option v-for="b in state.batches.filter(x => x.source_type === 'inbound')" :key="b.id" :value="b.id">#{{ b.id }}</option>
-        </select>
-      </label>
-    </div>
-    <button class="primary" :disabled="state.loading" @click="runReconciliation">运行对账</button>
   </section>
 </template>
 
 <script setup>
 import { useAppData } from '../composables/useAppData'
-const { state, onFileChange, uploadFile, loadPreview, runReconciliation } = useAppData()
+const { state, onFileChange, uploadFile, loadPreview } = useAppData()
 </script>

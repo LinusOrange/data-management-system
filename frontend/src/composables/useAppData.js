@@ -16,7 +16,7 @@ const state = reactive({
   previewBatchId: '',
   managedInboundRows: [],
   managedStatementRows: [],
-  reconciliationResults: { success: [], failed: [] },
+  reconciliationResults: { success: [], failed_diff: [], failed_statement_only: [], failed_inbound_only: [] },
   uploadForm: { source_type: 'statement', uploaded_by: '', file: null },
   reconciliationForm: { statement_batch_id: '', inbound_batch_id: '' },
   purchaseFilter: 'all'
@@ -43,7 +43,12 @@ const loadManagement = async () => {
   state.managedStatementRows = data.statement_rows
 }
 const loadReconciliationResults = async () => {
-  const { data } = await axios.get('/api/reconciliation/results')
+  const params = {}
+  if (state.reconciliationForm.statement_batch_id && state.reconciliationForm.inbound_batch_id) {
+    params.statement_batch_id = state.reconciliationForm.statement_batch_id
+    params.inbound_batch_id = state.reconciliationForm.inbound_batch_id
+  }
+  const { data } = await axios.get('/api/reconciliation/results', { params })
   state.reconciliationResults = data
 }
 
@@ -75,7 +80,7 @@ const uploadFile = async () => {
       ? `上传完成但解析失败（批次 #${data.id}）：${data.parse_error || '未知原因'}`
       : `上传成功，批次 #${data.id}，已自动解析`
     state.previewBatchId = String(data.id)
-    await Promise.all([loadBatches(), loadManagement(), loadPreview()])
+    await Promise.all([loadBatches(), loadManagement(), loadPreview(), loadReconciliationResults()])
   } catch (error) {
     state.message = `上传失败：${error?.response?.data?.detail || error.message}`
   } finally {
@@ -106,7 +111,7 @@ const runReconciliation = async () => {
       }
     })
     state.message = '对账任务已执行'
-    await loadAll()
+    await Promise.all([loadSummary(), loadPurchases(), loadReconciliationResults()])
   } catch (error) {
     state.message = `执行对账失败：${error?.response?.data?.detail || error.message}`
   } finally {
@@ -153,6 +158,7 @@ export function useAppData () {
     uploadFile,
     loadPreview,
     runReconciliation,
+    loadReconciliationResults,
     updateInvoice,
     updateReconciliation,
     removePurchase,

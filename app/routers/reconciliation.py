@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import MatchStatus, NormalizedRow, ReconciliationPair
+from app.models import MatchStatus, NormalizedRow, ReconciliationJob, ReconciliationPair
 from app.schemas import NormalizedRowCreate, ReconciliationResultOut, ReconciliationResultSummaryOut
 from app.services.reconciliation import build_match_key, normalize_text, reconcile_batches
 
@@ -39,11 +39,35 @@ def run_reconciliation(statement_batch_id: int, inbound_batch_id: int, db: Sessi
 
 
 @router.get("/results", response_model=ReconciliationResultSummaryOut)
-def list_reconciliation_results(db: Session = Depends(get_db)):
-    pairs = db.query(ReconciliationPair).order_by(ReconciliationPair.id.desc()).all()
+def list_reconciliation_results(
+    statement_batch_id: int | None = Query(default=None),
+    inbound_batch_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    pair_query = db.query(ReconciliationPair)
+
+    if statement_batch_id and inbound_batch_id:
+        job = (
+            db.query(ReconciliationJob)
+            .filter(
+                ReconciliationJob.statement_batch_id == statement_batch_id,
+                ReconciliationJob.inbound_batch_id == inbound_batch_id,
+            )
+            .order_by(ReconciliationJob.id.desc())
+            .first()
+        )
+        if not job:
+            return ReconciliationResultSummaryOut(
+                success=[], failed_diff=[], failed_statement_only=[], failed_inbound_only=[]
+            )
+        pair_query = pair_query.filter(ReconciliationPair.job_id == job.id)
+
+    pairs = pair_query.order_by(ReconciliationPair.id.desc()).all()
 
     success: list[ReconciliationResultOut] = []
-    failed: list[ReconciliationResultOut] = []
+    failed_diff: list[ReconciliationResultOut] = []
+    failed_statement_only: list[ReconciliationResultOut] = []
+    failed_inbound_only: list[ReconciliationResultOut] = []
 
     for pair in pairs:
         order_no, item_code = (pair.match_key or "|").split("|", 1)
@@ -62,7 +86,16 @@ def list_reconciliation_results(db: Session = Depends(get_db)):
         )
         if pair.match_status == MatchStatus.matched_exact:
             success.append(result)
+        elif pair.match_status == MatchStatus.statement_only:
+            failed_statement_only.append(result)
+        elif pair.match_status == MatchStatus.inbound_only:
+            failed_inbound_only.append(result)
         else:
-            failed.append(result)
+            failed_diff.append(result)
 
-    return ReconciliationResultSummaryOut(success=success, failed=failed)
+    return ReconciliationResultSummaryOut(
+        success=success,
+        failed_diff=failed_diff,
+        failed_statement_only=failed_statement_only,
+        failed_inbound_only=failed_inbound_only,
+    )

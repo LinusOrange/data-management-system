@@ -66,6 +66,18 @@ def parse_file_to_preview_rows(file_path: Path, source_type: SourceType) -> list
 
 
 
+
+
+def _has_required_inbound_fields(row_dict: dict) -> bool:
+    required_keys = ["name", "item_code", "qty", "amount", "order_no"]
+    for key in required_keys:
+        value = row_dict.get(key)
+        if value is None:
+            return False
+        if isinstance(value, str) and value.strip() == "":
+            return False
+    return True
+
 def _parse_xls(file_path: Path, source_type: SourceType) -> list[ParsedPreviewRow]:
     try:
         import xlrd
@@ -124,6 +136,8 @@ def _parse_inbound_xls_fixed_header(sheet) -> list[ParsedPreviewRow]:
             "order_no": sheet.cell_value(row_idx, col_idx["order_no"]) if col_idx["order_no"] < sheet.ncols else None,
             "raw_excel_row": row_idx + 1,
         }
+        if not _has_required_inbound_fields(row_dict):
+            continue
         preview = _build_preview_row_fixed(row_idx + 1, row_dict)
         if preview:
             data_rows.append(preview)
@@ -215,6 +229,8 @@ def _parse_inbound_xlsx_fixed_header(sheet) -> list[ParsedPreviewRow]:
             "order_no": sheet.cell(row=excel_row_no, column=col_idx["order_no"]).value,
             "raw_excel_row": excel_row_no,
         }
+        if not _has_required_inbound_fields(row_dict):
+            continue
         preview = _build_preview_row_fixed(excel_row_no, row_dict)
         if preview:
             data_rows.append(preview)

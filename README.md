@@ -56,7 +56,7 @@ docker compose up --build
 - `GET /api/imports/manage/overview`：查看所有文件和已解析条目（分入库单/对账单）
 - `DELETE /api/imports/{batch_id}`：删除文件批次及其已解析条目
 - `POST /api/reconciliation/run?statement_batch_id=1&inbound_batch_id=2`：运行对账
-- `GET /api/reconciliation/results`：按“货号+订单号”查看对账成功/失败结果
+- `GET /api/reconciliation/results`：按所选对账单批次+入库单批次查看对账结果（成功、数量/金额不一致、仅对账单、仅入库单）
 - `GET /api/purchases`：采购数据
 - `PATCH /api/purchases/{id}/invoice-status`
 - `PATCH /api/purchases/{id}/reconciliation-status`
@@ -66,6 +66,6 @@ docker compose up --build
 
 - **系统看板**：KPI 概览。
 - **上传文件对账**：上传、自动解析、批次预览（名称/货号/数量/金额/订单号）、触发对账。
-- **对账页面**：查看对账成功和失败条目（失败包含池内未匹配与数量金额不一致）。
+- **对账页面**：可选择已上传批次执行对账，并分别查看成功、数量/金额不一致、仅对账单未匹配、仅入库单未匹配。
 - **数据库管理**：统一列展示采购数据，维护对账状态/开票状态/删除。
 - **文件与条目管理**：管理全部导入文件，并分别查看入库单与对账单的已解析条目。
