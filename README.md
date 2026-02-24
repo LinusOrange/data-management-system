@@ -40,7 +40,7 @@ docker compose up --build
 
 ## 关键接口
 
-- `POST /api/imports/upload`：上传并自动解析（支持 xlsx/csv）
+- `POST /api/imports/upload`：上传并自动解析（支持 xls/xlsx/csv）
 - `GET /api/imports`：导入批次列表（含 `parse_error` 失败原因）
 - `GET /api/imports/{batch_id}/preview`：按统一列预览数据
 - `GET /api/imports/manage/overview`：查看所有文件和已解析条目（分入库单/对账单）

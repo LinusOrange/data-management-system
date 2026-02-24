@@ -58,10 +58,105 @@ def parse_file_to_preview_rows(file_path: Path, source_type: SourceType) -> list
     ext = file_path.suffix.lower()
     if ext in {".xlsx", ".xlsm", ".xltx", ".xltm"}:
         return _parse_xlsx(file_path, source_type)
+    if ext == ".xls":
+        return _parse_xls(file_path, source_type)
     if ext == ".csv":
         return _parse_csv(file_path, source_type)
     raise ValueError(f"unsupported file extension: {ext}")
 
+
+
+def _parse_xls(file_path: Path, source_type: SourceType) -> list[ParsedPreviewRow]:
+    try:
+        import xlrd
+    except ImportError as exc:  # noqa: PERF203
+        raise ValueError("xls parsing requires 'xlrd' dependency") from exc
+
+    workbook = xlrd.open_workbook(file_path.as_posix())
+    sheet = workbook.sheet_by_index(0)
+
+    if source_type == SourceType.inbound:
+        return _parse_inbound_xls_fixed_header(sheet)
+
+    return _parse_xls_by_header_scan(sheet, source_type)
+
+
+def _parse_inbound_xls_fixed_header(sheet) -> list[ParsedPreviewRow]:
+    """Inbound .xls template: row 17 header and E/H/M/P/W values."""
+    col_idx = {
+        "name": 4,
+        "item_code": 7,
+        "qty": 12,
+        "amount": 15,
+        "order_no": 22,
+    }
+
+    expected_headers = {
+        "name": "商品名称",
+        "item_code": "型号",
+        "qty": "数量",
+        "amount": "金额",
+        "order_no": "摘要",
+    }
+
+    header_row = 16
+    header_errors: list[str] = []
+    for field, idx in col_idx.items():
+        raw_header = sheet.cell_value(header_row, idx) if idx < sheet.ncols else None
+        normalized = _normalize_header(raw_header)
+        expected = expected_headers[field]
+        if expected not in normalized:
+            column_label = chr(ord("A") + idx)
+            header_errors.append(
+                f"{column_label}17 expected contains '{expected}', actual='{normalized or 'EMPTY'}'"
+            )
+
+    if header_errors:
+        raise ValueError("inbound header validation failed: " + "; ".join(header_errors))
+
+    data_rows: list[ParsedPreviewRow] = []
+    for row_idx in range(17, sheet.nrows):
+        row_dict = {
+            "name": sheet.cell_value(row_idx, col_idx["name"]) if col_idx["name"] < sheet.ncols else None,
+            "item_code": sheet.cell_value(row_idx, col_idx["item_code"]) if col_idx["item_code"] < sheet.ncols else None,
+            "qty": sheet.cell_value(row_idx, col_idx["qty"]) if col_idx["qty"] < sheet.ncols else None,
+            "amount": sheet.cell_value(row_idx, col_idx["amount"]) if col_idx["amount"] < sheet.ncols else None,
+            "order_no": sheet.cell_value(row_idx, col_idx["order_no"]) if col_idx["order_no"] < sheet.ncols else None,
+            "raw_excel_row": row_idx + 1,
+        }
+        preview = _build_preview_row_fixed(row_idx + 1, row_dict)
+        if preview:
+            data_rows.append(preview)
+
+    return data_rows
+
+
+def _parse_xls_by_header_scan(sheet, source_type: SourceType) -> list[ParsedPreviewRow]:
+    mapping = _mapping_for_source(source_type)
+    headers: list[str] = []
+    header_found = False
+    data_rows: list[ParsedPreviewRow] = []
+
+    for row_idx in range(sheet.nrows):
+        row = [sheet.cell_value(row_idx, col) for col in range(sheet.ncols)]
+        values = [str(v).strip() if v is not None else "" for v in row]
+        norm_values = [_normalize_header(v) for v in values]
+
+        if not header_found:
+            if all(col in norm_values for col in mapping.keys()):
+                headers = norm_values
+                header_found = True
+            continue
+
+        if not any(v not in {"", None} for v in values):
+            continue
+
+        row_dict = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
+        preview = _build_preview_row(row_idx + 1, row_dict, mapping)
+        if preview:
+            data_rows.append(preview)
+
+    return data_rows
 
 def _parse_xlsx(file_path: Path, source_type: SourceType) -> list[ParsedPreviewRow]:
     workbook = load_workbook(filename=file_path, read_only=True, data_only=True)
