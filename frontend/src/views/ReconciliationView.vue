@@ -1,7 +1,12 @@
 <template>
-  <section class="panel">
-    <h2>对账页面</h2>
-    <p>规则：货号+订单号相同后，数量与金额都一致为成功；未匹配或数量金额不一致为失败。</p>
+  <section class="panel glass-panel">
+    <div class="section-head">
+      <div>
+        <h2>对账页面</h2>
+        <p class="subtle">规则：先按 货号 + 订单号 匹配；匹配后数量和金额都一致才算成功。</p>
+      </div>
+      <button class="primary" :disabled="state.loading" @click="runReconciliation">执行所选批次对账</button>
+    </div>
 
     <div class="form-grid">
       <label>对账单批次
@@ -17,7 +22,13 @@
         </select>
       </label>
     </div>
-    <button class="primary" :disabled="state.loading" @click="runReconciliation">执行所选批次对账</button>
+
+    <div class="kpis recon-kpis">
+      <article class="card ok"><h3>对账成功</h3><p>{{ state.reconciliationResults.success.length }}</p></article>
+      <article class="card danger"><h3>数量/金额不符</h3><p>{{ state.reconciliationResults.failed_diff.length }}</p></article>
+      <article class="card warn"><h3>仅对账单</h3><p>{{ state.reconciliationResults.failed_statement_only.length }}</p></article>
+      <article class="card warn"><h3>仅入库单</h3><p>{{ state.reconciliationResults.failed_inbound_only.length }}</p></article>
+    </div>
 
     <h3>已完成对账条目（成功）</h3>
     <table>
@@ -31,15 +42,14 @@
       </tbody>
     </table>
 
-    <h3>未完成对账（数量或金额不一致）</h3>
+    <h3>金额/数量不符条目（货号+订单号已匹配）</h3>
     <table>
-      <thead><tr><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>对账单金额</th><th>入库单金额</th><th>失败类型</th></tr></thead>
+      <thead><tr><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>数量差</th><th>对账单金额</th><th>入库单金额</th><th>金额差</th></tr></thead>
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_diff" :key="`diff-${row.match_key}`">
           <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
-          <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.inbound_qty_sum || '-' }}</td>
-          <td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td>
-          <td>{{ row.match_status }}</td>
+          <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.inbound_qty_sum || '-' }}</td><td>{{ row.qty_diff || '-' }}</td>
+          <td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td><td>{{ row.amt_diff || '-' }}</td>
         </tr>
       </tbody>
     </table>
@@ -50,8 +60,7 @@
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_statement_only" :key="`stmt-${row.match_key}`">
           <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
-          <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.statement_amt_sum || '-' }}</td>
-          <td>{{ row.match_status }}</td>
+          <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.match_status }}</td>
         </tr>
       </tbody>
     </table>
@@ -62,8 +71,7 @@
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_inbound_only" :key="`inb-${row.match_key}`">
           <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
-          <td>{{ row.inbound_qty_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td>
-          <td>{{ row.match_status }}</td>
+          <td>{{ row.inbound_qty_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td><td>{{ row.match_status }}</td>
         </tr>
       </tbody>
     </table>
