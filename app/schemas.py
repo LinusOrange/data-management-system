@@ -102,6 +102,7 @@ class ReconciliationResultOut(BaseModel):
     match_key: str
     order_no: str | None
     item_code: str | None
+    item_name: str | None
     statement_qty_sum: Decimal | None
     inbound_qty_sum: Decimal | None
     statement_amt_sum: Decimal | None

@@ -64,6 +64,16 @@ def list_reconciliation_results(
 
     pairs = pair_query.order_by(ReconciliationPair.id.desc()).all()
 
+    related_row_ids: set[int] = set()
+    for pair in pairs:
+        related_row_ids.update(pair.inbound_row_ids or [])
+        related_row_ids.update(pair.statement_row_ids or [])
+
+    row_name_map: dict[int, str | None] = {}
+    if related_row_ids:
+        related_rows = db.query(NormalizedRow.id, NormalizedRow.item_name).filter(NormalizedRow.id.in_(related_row_ids)).all()
+        row_name_map = {row_id: item_name for row_id, item_name in related_rows}
+
     success: list[ReconciliationResultOut] = []
     failed_diff: list[ReconciliationResultOut] = []
     failed_statement_only: list[ReconciliationResultOut] = []
@@ -71,10 +81,12 @@ def list_reconciliation_results(
 
     for pair in pairs:
         order_no, item_code = (pair.match_key or "|").split("|", 1)
+        name_row_id = (pair.inbound_row_ids or [None])[0] or (pair.statement_row_ids or [None])[0]
         result = ReconciliationResultOut(
             match_key=pair.match_key or "",
             order_no=order_no or None,
             item_code=item_code or None,
+            item_name=row_name_map.get(name_row_id) if name_row_id else None,
             statement_qty_sum=pair.statement_qty_sum,
             inbound_qty_sum=pair.inbound_qty_sum,
             statement_amt_sum=pair.statement_amt_sum,

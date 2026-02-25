@@ -32,10 +32,10 @@
 
     <h3>已完成对账条目（成功）</h3>
     <table>
-      <thead><tr><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>对账单金额</th><th>入库单金额</th></tr></thead>
+      <thead><tr><th>名称</th><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>对账单金额</th><th>入库单金额</th></tr></thead>
       <tbody>
         <tr v-for="row in state.reconciliationResults.success" :key="`ok-${row.match_key}`">
-          <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
+          <td>{{ row.item_name || '-' }}</td><td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
           <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.inbound_qty_sum || '-' }}</td>
           <td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td>
         </tr>
@@ -44,10 +44,10 @@
 
     <h3>金额/数量不符条目（货号+订单号已匹配）</h3>
     <table>
-      <thead><tr><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>数量差</th><th>对账单金额</th><th>入库单金额</th><th>金额差</th></tr></thead>
+      <thead><tr><th>名称</th><th>订单号</th><th>货号</th><th>对账单数量</th><th>入库单数量</th><th>数量差</th><th>对账单金额</th><th>入库单金额</th><th>金额差</th></tr></thead>
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_diff" :key="`diff-${row.match_key}`">
-          <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
+          <td>{{ row.item_name || '-' }}</td><td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
           <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.inbound_qty_sum || '-' }}</td><td>{{ row.qty_diff || '-' }}</td>
           <td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td><td>{{ row.amt_diff || '-' }}</td>
         </tr>
@@ -56,10 +56,10 @@
 
     <h3>未匹配对账单条目（仅对账单池）</h3>
     <table>
-      <thead><tr><th>订单号</th><th>货号</th><th>对账单数量</th><th>对账单金额</th><th>失败类型</th></tr></thead>
+      <thead><tr><th>名称</th><th>订单号</th><th>货号</th><th>对账单数量</th><th>对账单金额</th><th>失败类型</th></tr></thead>
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_statement_only" :key="`stmt-${row.match_key}`">
-          <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
+          <td>{{ row.item_name || '-' }}</td><td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
           <td>{{ row.statement_qty_sum || '-' }}</td><td>{{ row.statement_amt_sum || '-' }}</td><td>{{ row.match_status }}</td>
         </tr>
       </tbody>
@@ -67,10 +67,10 @@
 
     <h3>未匹配入库单条目（仅入库单池）</h3>
     <table>
-      <thead><tr><th>订单号</th><th>货号</th><th>入库单数量</th><th>入库单金额</th><th>失败类型</th></tr></thead>
+      <thead><tr><th>名称</th><th>订单号</th><th>货号</th><th>入库单数量</th><th>入库单金额</th><th>失败类型</th></tr></thead>
       <tbody>
         <tr v-for="row in state.reconciliationResults.failed_inbound_only" :key="`inb-${row.match_key}`">
-          <td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
+          <td>{{ row.item_name || '-' }}</td><td>{{ row.order_no || '-' }}</td><td>{{ row.item_code || '-' }}</td>
           <td>{{ row.inbound_qty_sum || '-' }}</td><td>{{ row.inbound_amt_sum || '-' }}</td><td>{{ row.match_status }}</td>
         </tr>
       </tbody>
