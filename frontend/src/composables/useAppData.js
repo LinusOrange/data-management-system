@@ -19,7 +19,8 @@ const state = reactive({
   reconciliationResults: { success: [], failed_diff: [], failed_statement_only: [], failed_inbound_only: [] },
   uploadForm: { source_type: 'statement', uploaded_by: '', file: null },
   reconciliationForm: { statement_file_name: '', inbound_file_name: '' },
-  purchaseFilter: 'all'
+  purchaseFilter: 'all',
+  deleteOrderRef: ''
 })
 
 const statusOptions = [
@@ -143,6 +144,35 @@ const removePurchase = async (itemId) => {
   await loadAll()
 }
 
+
+const bulkDeletePurchases = async (ids) => {
+  if (!ids?.length) return
+  state.loading = true
+  try {
+    const { data } = await axios.post('/api/purchases/bulk-delete', { ids })
+    state.message = `批量删除完成，共删除 ${data.deleted} 条`
+    await loadAll()
+  } catch (error) {
+    state.message = `批量删除失败：${error?.response?.data?.detail || error.message}`
+  } finally {
+    state.loading = false
+  }
+}
+
+const deleteByOrderRef = async (orderRef) => {
+  if (!orderRef) return (state.message = '请先输入订单号')
+  state.loading = true
+  try {
+    const { data } = await axios.post('/api/purchases/bulk-delete', { order_ref: orderRef })
+    state.message = `订单号 ${orderRef} 删除完成，共删除 ${data.deleted} 条`
+    await loadAll()
+  } catch (error) {
+    state.message = `按订单号删除失败：${error?.response?.data?.detail || error.message}`
+  } finally {
+    state.loading = false
+  }
+}
+
 const deleteBatch = async (batchId) => {
   state.loading = true
   try {
@@ -171,6 +201,8 @@ export function useAppData () {
     updateInvoice,
     updateReconciliation,
     removePurchase,
+    bulkDeletePurchases,
+    deleteByOrderRef,
     deleteBatch
   }
 }

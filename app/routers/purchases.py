@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -21,6 +21,28 @@ def list_purchases(
     if reconciliation_status:
         query = query.filter(PurchaseItem.reconciliation_status == reconciliation_status)
     return query.order_by(PurchaseItem.id.desc()).all()
+
+
+@router.post("/bulk-delete")
+def bulk_delete_purchases(
+    ids: list[int] = Body(default_factory=list),
+    order_ref: str | None = Body(default=None),
+    db: Session = Depends(get_db),
+):
+    deleted = 0
+
+    if ids:
+        deleted += db.query(PurchaseItem).filter(PurchaseItem.id.in_(ids)).delete(synchronize_session=False)
+
+    if order_ref:
+        deleted += (
+            db.query(PurchaseItem)
+            .filter(PurchaseItem.order_ref == order_ref)
+            .delete(synchronize_session=False)
+        )
+
+    db.commit()
+    return {"deleted": deleted, "ids_count": len(ids), "order_ref": order_ref}
 
 
 @router.get("/{item_id}", response_model=PurchaseItemOut)
