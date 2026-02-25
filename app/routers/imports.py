@@ -42,7 +42,8 @@ async def upload_import_file(
         suffix = ".bin"
 
     date_str = datetime.utcnow().strftime("%Y%m%d")
-    prefix = f"{date_str}-"
+    source_prefix = "statement" if source_type == SourceType.statement else "inbound"
+    prefix = f"{source_prefix}-{date_str}-"
     existing_names = [
         Path(name).name
         for (name,) in db.query(ImportBatch.file_name).filter(ImportBatch.file_name.like(f"%/{prefix}%")).all()

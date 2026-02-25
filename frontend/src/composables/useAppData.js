@@ -18,7 +18,7 @@ const state = reactive({
   managedStatementRows: [],
   reconciliationResults: { success: [], failed_diff: [], failed_statement_only: [], failed_inbound_only: [] },
   uploadForm: { source_type: 'statement', uploaded_by: '', file: null },
-  reconciliationForm: { statement_batch_id: '', inbound_batch_id: '' },
+  reconciliationForm: { statement_file_name: '', inbound_file_name: '' },
   purchaseFilter: 'all'
 })
 
@@ -34,6 +34,13 @@ const reconOptions = [
   { label: '异常', value: 'exception' }
 ]
 
+
+const resolveSelectedBatchIds = () => {
+  const statement = state.batches.find((b) => b.source_type === 'statement' && b.file_name === state.reconciliationForm.statement_file_name)
+  const inbound = state.batches.find((b) => b.source_type === 'inbound' && b.file_name === state.reconciliationForm.inbound_file_name)
+  return { statementBatchId: statement?.id || null, inboundBatchId: inbound?.id || null }
+}
+
 const loadSummary = async () => { state.summary = (await axios.get('/api/dashboard/summary')).data }
 const loadPurchases = async () => { state.purchases = (await axios.get('/api/purchases')).data }
 const loadBatches = async () => { state.batches = (await axios.get('/api/imports')).data }
@@ -44,9 +51,10 @@ const loadManagement = async () => {
 }
 const loadReconciliationResults = async () => {
   const params = {}
-  if (state.reconciliationForm.statement_batch_id && state.reconciliationForm.inbound_batch_id) {
-    params.statement_batch_id = state.reconciliationForm.statement_batch_id
-    params.inbound_batch_id = state.reconciliationForm.inbound_batch_id
+  const { statementBatchId, inboundBatchId } = resolveSelectedBatchIds()
+  if (statementBatchId && inboundBatchId) {
+    params.statement_batch_id = statementBatchId
+    params.inbound_batch_id = inboundBatchId
   }
   const { data } = await axios.get('/api/reconciliation/results', { params })
   state.reconciliationResults = data
@@ -99,15 +107,16 @@ const loadPreview = async () => {
 }
 
 const runReconciliation = async () => {
-  if (!state.reconciliationForm.statement_batch_id || !state.reconciliationForm.inbound_batch_id) {
-    return (state.message = '请选择对账单批次和入库单批次')
+  const { statementBatchId, inboundBatchId } = resolveSelectedBatchIds()
+  if (!statementBatchId || !inboundBatchId) {
+    return (state.message = '请选择对账单文件和入库单文件')
   }
   state.loading = true
   try {
     await axios.post('/api/reconciliation/run', null, {
       params: {
-        statement_batch_id: state.reconciliationForm.statement_batch_id,
-        inbound_batch_id: state.reconciliationForm.inbound_batch_id
+        statement_batch_id: statementBatchId,
+        inbound_batch_id: inboundBatchId
       }
     })
     state.message = '对账任务已执行'

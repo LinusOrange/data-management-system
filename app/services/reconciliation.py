@@ -58,7 +58,8 @@ def reconcile_batches(db: Session, statement_batch_id: int, inbound_batch_id: in
 
     all_keys = set(stmt_map.keys()) | set(inb_map.keys())
 
-    for key in all_keys:
+    # match by key groups, independent from original row order in each file
+    for key in sorted(all_keys):
         stmt_group = stmt_map.get(key, [])
         inb_group = inb_map.get(key, [])
 

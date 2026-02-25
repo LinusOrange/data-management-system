@@ -5,20 +5,20 @@
         <h2>对账页面</h2>
         <p class="subtle">规则：先按 货号 + 订单号 匹配；匹配后数量和金额都一致才算成功。</p>
       </div>
-      <button class="primary" :disabled="state.loading" @click="runReconciliation">执行所选批次对账</button>
+      <button class="primary" :disabled="state.loading" @click="runReconciliation">执行所选文件对账</button>
     </div>
 
     <div class="form-grid">
-      <label>对账单批次
-        <select v-model="state.reconciliationForm.statement_batch_id" @change="loadReconciliationResults">
+      <label>对账单文件
+        <select v-model="state.reconciliationForm.statement_file_name" @change="loadReconciliationResults">
           <option value="">请选择</option>
-          <option v-for="b in state.batches.filter(x => x.source_type === 'statement')" :key="b.id" :value="b.id">#{{ b.id }}</option>
+          <option v-for="b in state.batches.filter(x => x.source_type === 'statement')" :key="b.id" :value="b.file_name">{{ (b.file_name || '').split('/').pop() }}</option>
         </select>
       </label>
-      <label>入库单批次
-        <select v-model="state.reconciliationForm.inbound_batch_id" @change="loadReconciliationResults">
+      <label>入库单文件
+        <select v-model="state.reconciliationForm.inbound_file_name" @change="loadReconciliationResults">
           <option value="">请选择</option>
-          <option v-for="b in state.batches.filter(x => x.source_type === 'inbound')" :key="b.id" :value="b.id">#{{ b.id }}</option>
+          <option v-for="b in state.batches.filter(x => x.source_type === 'inbound')" :key="b.id" :value="b.file_name">{{ (b.file_name || '').split('/').pop() }}</option>
         </select>
       </label>
     </div>
